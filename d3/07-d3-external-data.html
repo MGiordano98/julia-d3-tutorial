@@ -59,7 +59,7 @@ function drawBars(data)
 
 
 
-var m = location.search.match(/\bdata=([\d.,]+)/);
+var m = location.search.match(/\bdata=\[?([\d.,]+)/);
 
 if(m && m.length) {
 	// If we find data in the query string, we'll use it
