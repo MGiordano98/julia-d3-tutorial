@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+<head>
+<title>Creating basic SVG object with D3</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+</head>
+<body>
+<script type="text/javascript">
+d3.select("body").append("svg")
+	    .classed("histogram", true)
+	    .attr("width", window.innerWidth)
+	    .attr("height", window.innerHeight);
+</script>
+</body>
+</html>
+
