@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+<title>Adding Data to d3</title>
+<style type="text/css">
+svg { border: solid 1px blue; margin: auto;}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+</head>
+<body>
+<script type="text/javascript">
+var width = window.innerWidth*0.95;
+var height = window.innerHeight*0.95;
+
+var svg = d3.select("body").append("svg")
+	    .classed("histogram", true)
+	    .attr("width", width)
+	    .attr("height", height);
+
+
+var data = [36,90,168,370,589,867,951,873,838,752,637,542,479,359,303,291,199,186,146,119,115,100,77,90,67,753];
+var thresholds = [15,494,972,1451,1930,2408,2887,3366,3844,4323,4802,5280,5759,6238,6717,7195,7674,8153,8631,9110,9589,10067,10546,11025,11503,11982,551767];
+
+
+
+
+var bars = svg.selectAll(".bar");
+
+bars = bars.data(data);
+
+var xscale = d3.scale.linear()
+		.range([0, width*.8])
+		.domain([0, data.length]);
+
+var yscale = d3.scale.linear()
+		.range([0, height*.8])
+		.domain([0, d3.max(data)]);
+
+bars.enter()
+	.append("rect")
+	.classed("bar", true)
+	.attr("width", width*0.8/(data.length+1))
+	.style("fill", "blue");
+
+bars
+	.attr("x", function(d, i) {
+		return width*.1 + xscale(i);
+	})
+	.attr("y", function(d) {
+		return height*.9 - yscale(d);
+	})
+	.attr("height", function(d) {
+		return yscale(d);
+	});
+</script>
+</body>
+</html>
+
