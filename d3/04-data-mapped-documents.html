@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+<title>Mapping data to nodes</title>
+<style type="text/css">
+svg { border: solid 1px blue; margin: auto;}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+</head>
+<body>
+<script type="text/javascript">
+var svg = d3.select("body").append("svg")
+	    .classed("histogram", true)
+	    .attr("width", window.innerWidth * 0.95)
+	    .attr("height", window.innerHeight * 0.95);
+
+
+// Initialise data to a default array
+var data = [2, 3, 5, 7, 11, 13, 17];
+
+
+
+
+var funky = svg.selectAll(".funky");			// We'll select some imaginary nodes with class .funky
+
+funky = funky.data(data);				// And add our data to this selection
+
+
+
+
+funky.enter()						// Now we get the `enter` selection that's called for
+	.append("line")					// all data that has not been mapped to a node yet
+	.classed("funky", true)				// and we append a red line node for each of these.
+	.attr("x1", 10)
+	.attr("x2", 500)
+	.attr("y1", 10)					// well, that's not very data-driven, but okay, we get one node per data element
+	.attr("y2", 500)
+	.style("stroke-width", 2.5)
+	.style("stroke", "red");
+</script>
+</body>
+</html>
+

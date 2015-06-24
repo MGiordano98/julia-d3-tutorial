@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+<head>
+<title>Mapping data to nodes</title>
+<style type="text/css">
+svg { border: solid 1px blue; margin: auto;}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+</head>
+<body>
+<input type="text" id="data">
+
+<script type="text/javascript">
+var width = window.innerWidth*0.95;
+var height = window.innerHeight*0.95;
+
+var svg = d3.select("body").append("svg")
+	    .classed("histogram", true)
+	    .attr("width", width)
+	    .attr("height", height);
+
+
+// Initialise data to a default array
+var data = [2, 3, 5, 7, 11, 13, 17];
+
+
+
+var dataNode = document.getElementById("data");
+dataNode.value = data.join(",");
+
+dataNode.addEventListener("change", function(e) {
+	/*
+	If the data changes, we need to re-read it
+	- First pull the numbers out of the textbox
+	- Then split on ,
+	- Then convert each to a number (the textbox contains a string)
+	*/
+	var data = dataNode.value				// value is a string
+		.split(',')				// split returns an array of strings
+		.map(function(d) {			// map iterates through this array
+			return parseFloat(d, 10);	// parseFloat converts each element to a number
+		});
+
+	redraw(data);
+}, false);
+
+
+
+
+
+var funky = svg.selectAll(".funky");			// We'll select some imaginary nodes with class .funky
+
+
+var xstep = width/(data.length + 1);
+var yscale = 5;
+var bottom = height*.9;
+var left = 50 + d3.min(data) * yscale;
+
+
+function redraw(data) {
+	funky = funky.data(data);				// And add our data to this selection
+
+
+
+
+
+	funky.enter()						// Now we get the `enter` selection that's called for all data that has not been mapped to a node yet (all of it)
+		.append("line")					// and we append a red line node for each of these.
+		.classed("funky", true)				// but this time we derive the line's position from the data
+		.style("stroke-width", 2.5)
+		.style("stroke", "red");
+
+
+
+
+
+	funky							// The `enter + update` selection updates the node's position based on the current value of its data
+		.attr("x1", function(d, i) {
+			return i * xstep + left;
+		}) 
+		.attr("x2", function(d, i) {
+			return (i+1) * xstep + left;
+		})
+		.attr("y1", function(d, i) {
+			return i===0 ? bottom : (bottom - data[i-1] * yscale);
+		})
+		.attr("y2", function(d) {
+			return bottom - d * yscale;
+		});
+
+
+
+
+	funky.exit()						// The `exit` selection removes nodes that are no longer mapped to data
+		.remove();
+}
+
+redraw(data);
+</script>
+</body>
+</html>
+
