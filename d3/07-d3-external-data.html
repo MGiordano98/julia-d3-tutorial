@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+<head>
+<title>Adding Data to d3</title>
+<style type="text/css">
+rect.bar {
+	fill: #28d;
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+</head>
+
+<body>
+<script type="text/javascript">
+var width = window.innerWidth;
+var height = window.innerHeight;
+
+var callingWindow = window.opener;
+
+var svg = d3.select("body").append("svg")
+	    .classed("histogram", true)
+	    .attr("width", width)
+	    .attr("height", height);
+
+
+
+
+// We encapsulate the bar drawing code in a function so we can call it multiple times
+function drawBars(data)
+{
+	var bars = svg.selectAll(".bar");
+
+	bars = bars.data(data);
+
+	var xscale = d3.scale.linear()
+			.range([0, width*.98])
+			.domain([0, data.length]);
+
+	var yscale = d3.scale.linear()
+			.range([0, height*.98])
+			.domain([0, d3.max(data)]);
+
+	bars.enter()
+		.append("rect")
+		.classed("bar", true)
+		.attr("width", width*0.98/(data.length+1));
+
+	bars.exit().remove();
+
+	bars
+		.attr("x", function(d, i) {
+			return width*.01 + xscale(i);
+		})
+		.attr("y", function(d) {
+			return height*.99 - yscale(d);
+		})
+		.attr("height", yscale);
+}
+
+
+
+var m = location.search.match(/\bdata=([\d.,]+)/);
+
+if(m && m.length) {
+	// If we find data in the query string, we'll use it
+	data = m[1]
+		.split(",")
+		.map(function(d) {
+			return parseFloat(d, 10);
+		});
+
+
+	// If we had initial data via the query string, we will draw it
+	if(data && data.length > 0) {
+		drawBars(data);
+	}
+}
+
+
+
+// We also listen for the `message` event which the caller can call using `iframe.postMessage`
+// If this event handler receives data from the calling window, we will redraw the histogram
+// with that data
+window.addEventListener("message", function(e) {
+		if(!e.data || !e.data.length) {
+			return;
+		}
+
+		if(e.source) {
+			callingWindow = e.source;
+		}
+
+		drawBars(e.data);
+	}, false);
+</script>
+</body>
+</html>
+
