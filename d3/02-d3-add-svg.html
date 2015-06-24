@@ -2,14 +2,17 @@
 <html>
 <head>
 <title>Creating basic SVG object with D3</title>
+<style type="text/css">
+svg { border: solid 1px blue; margin: auto;}
+</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
 </head>
 <body>
 <script type="text/javascript">
 d3.select("body").append("svg")
 	    .classed("histogram", true)
-	    .attr("width", window.innerWidth)
-	    .attr("height", window.innerHeight);
+	    .attr("width", window.innerWidth * 0.95)
+	    .attr("height", window.innerHeight * 0.95);
 </script>
 </body>
 </html>
