@@ -245,6 +245,9 @@ function maybeExecute() {
 }
 
 
+var messages = [];
+var msgIds = {};
+
 function executeJuliaCode(code) {
 	var msgId;
 	// Get a message ID that hasn't been used before
@@ -257,7 +260,7 @@ function executeJuliaCode(code) {
 		"header": {
 			"msg_id":msgId,
 			"username":"username",
-			"session":IPython.session,
+			"session":Jupyter.session,
 			"msg_type":"execute_request",
 			"version":"5.0"
 		},
@@ -277,14 +280,9 @@ function executeJuliaCode(code) {
 	messages.push(msg);
 	msgIds[msgId] = msg;
 
-	if (IPython.sock && IPython.sock.readyState === 1) {
-		performance.mark("sessionSocketMessageSend");
+	Jupyter.sock.send(JSON.stringify(msg));
 
-		IPython.sock.send(JSON.stringify(msg));
-
-		msg.status = "sent";
-	}
-	// else this will happen in IPython.sock.onopen when the queue is flushed
+	msg.status = "sent";
 }
 
 
