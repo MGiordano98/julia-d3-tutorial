@@ -108,6 +108,7 @@ function getNotebookDetails() {
 	oReq.withCredentials = false;
 	oReq.open("GET", url, true);
 	oReq.setRequestHeader("Accept", "application/json"); // The accepted media types
+	oReq.setRequestHeader("Origin", location.hostname);
 	oReq.send();
 }
 
@@ -125,6 +126,7 @@ function getSessionDetails() {
 	oReq.withCredentials = false;
 	oReq.open("POST", url, true);
 	oReq.setRequestHeader("Content-Type", "text/plain");  // we could use application/json, but that will trigger a preflight OPTIONS request
+	oReq.setRequestHeader("Origin", location.hostname);
 	oReq.send(JSON.stringify(data)); // sends kernel and notebook info
 }
 
