@@ -1,0 +1,298 @@
+<!doctype html>
+<html>
+<head>
+<title>Fetching data using the Jupyter API</title>
+<style type="text/css">
+rect.bar {
+	fill: #28d;
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.16/d3.min.js"></script>
+</head>
+
+<body>
+<script type="text/javascript">
+var width = window.innerWidth * 0.98;
+var height = window.innerHeight * 0.95;
+
+var svg = d3.select("body").append("svg")
+	    .classed("histogram", true)
+	    .attr("width", width)
+	    .attr("height", height);
+
+
+
+
+function uuid(a) {
+	return a
+		? (a^Math.random()*16>>a/4).toString(16)
+		:([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, uuid)
+}
+
+
+// We encapsulate the bar drawing code in a function so we can call it multiple times
+function drawBars(data)
+{
+	var bars = svg.selectAll(".bar");
+
+	bars = bars.data(data);
+
+	var xscale = d3.scale.linear()
+			.range([0, width*.98])
+			.domain([0, data.length]);
+
+	var yscale = d3.scale.linear()
+			.range([0, height*.98])
+			.domain([0, d3.max(data)]);
+
+	bars.enter()
+		.append("rect")
+		.classed("bar", true)
+		.attr("width", width*0.98/(data.length+1));
+
+	bars.exit().remove();
+
+	bars
+		.attr("x", function(d, i) {
+			return width*.01 + xscale(i);
+		})
+		.attr("y", function(d) {
+			return height*.99 - yscale(d);
+		})
+		.attr("height", yscale);
+}
+
+
+
+// Define our base URLs
+var Jupyter = {};
+
+Jupyter.sessionsUrl = "https://juliabox.org/api/sessions";
+Jupyter.kernelUrl = "https://juliabox.org/api/kernels";
+Jupyter.notebookUrl = "https://juliabox.org/api/contents/"
+Jupyter.baseWsUrl = "wss://juliabox.org/api/kernels/";
+Jupyter.notebook = "Fluent/07 - Jupyter API.ipynb";
+
+
+
+function notebook_loaded() {
+	// data is in this.responseText
+	var data;
+	try {
+		data = JSON.parse(this.responseText);
+	}
+	catch (e) {
+		// handle exception from JSON.parse
+		return;
+	}
+
+
+	if (!data || !data.content || !data.content.cells || !data.content.cells.length) {
+		// handle error
+		return;
+	}
+
+	var code = data.content.cells.filter(function(c) { return c.cell_type === "code"; }).map(function(c) { return c.source; });
+
+	Jupyter.code = code;
+
+	maybeExecute();
+}
+
+
+function getNotebookDetails() {
+	var url = Jupyter.notebookUrl + Jupyter.notebook;
+
+	var oReq = new XMLHttpRequest();
+	oReq.addEventListener("load", notebook_loaded); // TODO: also handle errors
+	oReq.withCredentials = true;
+	oReq.open("GET", url, true);
+	oReq.setRequestHeader("Accept", "application/json"); // The accepted media types
+	oReq.send();
+}
+
+
+function getSessionDetails() {
+	var url = Jupyter.sessionsUrl;
+	var data = data = {
+		"kernel": {"name": "julia-0.4"},
+		"notebook": {"path": Jupyter.notebook}
+	};
+
+
+	var oReq = new XMLHttpRequest();
+	oReq.addEventListener("load", session_loaded); // TODO: also handle errors
+	oReq.withCredentials = true;
+	oReq.open("POST", url, true);
+	oReq.setRequestHeader("Content-Type", "text/plain");  // we could use application/json, but that will trigger a preflight OPTIONS request
+	oReq.send(JSON.stringify(data)); // sends kernel and notebook info
+}
+
+function session_loaded() {
+	// data is in this.responseText
+	var data;
+	try {
+		data = JSON.parse(this.responseText);
+	}
+	catch (e) {
+		// handle exception from JSON.parse
+		return;
+	}
+
+	if (data.message && data.message.match(/^Session not found/)) {
+		Jupyter.session = Jupyter.kernel = undefined;
+		getSessionDetails();
+		return;
+	}
+
+	if (data && data.length > 0) {
+		data = data[0];
+	}
+	if (!data || !data.id || !data.kernel || !data.kernel.id || !data.notebook) {
+		console.error(location.pathname, "something's weird");
+		// handle error
+		return;
+	}
+
+	Jupyter.kernel = data.kernel.id;
+	Jupyter.session = data.id;
+
+	// Make connection to websocket
+	connectWebSocket();
+}
+
+
+function connectWebSocket() {
+	if (Jupyter.sock) {
+		return;
+	}
+
+	try {
+		Jupyter.sock = new WebSocket(
+			Jupyter.baseWsUrl + encodeURIComponent(Jupyter.kernel) + 
+			"/channels?session_id=" + encodeURIComponent(Jupyter.session)
+		);
+	}
+	catch (e) {
+		console.log("Error connecting to web socket", e)
+		getSessionDetails();
+	}
+
+	if (!Jupyter.sock || Jupyter.sock.readyState === 3) {
+		Jupyter.sock = undefined;
+		getSessionDetails();
+		return;
+	}
+
+	// listen for the onopen, onerror and onmessage events.
+	Jupyter.sock.onmessage = function(event) {
+
+		var data = JSON.parse(event.data);
+
+
+		var chartdata;
+
+		if (data.msg_type === "execute_result") {
+			chartdata = data.content.data["text/plain"];
+
+			// Currently need to parse twice because data is first JSON Encoded by Julia, and then the Julia output is JSON encoded by Jupyter
+			// This will change once we get Julia to write out JavaScript objects as a separate content-type instead of JSON as a text/plain string
+
+			chartdata = JSON.parse(chartdata)
+			chartdata = JSON.parse(chartdata)
+		}
+		else if (data.msg_type === "error") {
+			chartdata = data.content;
+		}
+		else if (data.msg_type === "execute_reply" && data.content.status === "error") {
+			chartdata = data.content;
+		}
+		else if (data.msg_type === "stream" && data.content.name === "stdout" && data.content.text) {
+			chartdata = data.content.text;
+		}
+		else if (data.msg_type === "execute_input") {
+			chartdata = data.content;
+		}
+		else {
+			chartdata = null;
+		}
+
+		if (chartdata) {
+			forwardMessage(data.msg_type, chartdata);
+		}
+	};
+
+	// Handle this error (see step 4 in algorithm above)
+	Jupyter.sock.onerror = function() {
+
+		Jupyter.sock = undefined;
+		getSessionDetails();
+	};
+
+	// Handle this error (see step 4 in algorithm above)
+	Jupyter.sock.onclose = function() {
+		Jupyter.sock = undefined;
+	};
+
+	maybeExecute();
+}
+
+
+function maybeExecute() {
+	if(Jupyter.code && Jupyter.sock) {
+		executeNotebook();
+	}
+}
+
+
+function executeJuliaCode(code) {
+	var msgId;
+	// Get a message ID that hasn't been used before
+	do {
+		msgId = uuid();
+	} while (msgIds.hasOwnProperty(msgId));
+
+	// give new code to julia kernel
+	var msg = {
+		"header": {
+			"msg_id":msgId,
+			"username":"username",
+			"session":IPython.session,
+			"msg_type":"execute_request",
+			"version":"5.0"
+		},
+		"metadata":{},
+		"content":{
+			"code":code,
+			"silent":false,
+			"store_history":false,
+			"user_expressions":{},
+			"allow_stdin":false
+		},
+		"buffers":[],
+		"parent_header":{},
+		"channel":"shell"
+	 };
+
+	messages.push(msg);
+	msgIds[msgId] = msg;
+
+	if (IPython.sock && IPython.sock.readyState === 1) {
+		performance.mark("sessionSocketMessageSend");
+
+		IPython.sock.send(JSON.stringify(msg));
+
+		msg.status = "sent";
+	}
+	// else this will happen in IPython.sock.onopen when the queue is flushed
+}
+
+
+
+
+
+
+</script>
+</body>
+</html>
+
